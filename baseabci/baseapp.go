@@ -738,6 +738,15 @@ func (app *BaseApp) runTxStd(ctx ctx.Context, tx *txs.TxStd, txStdFromChainID st
 	var crossTxQcp *txs.TxQcp
 
 	for _, itx := range tx.ITxs {
+		if app.gasHandler != nil {
+			gasUsed, err := app.gasHandler(runCtx, itx.GetGasPayer())
+			if err != nil {
+				result = err.Result()
+				break
+			}
+			result.GasUsed += gasUsed
+		}
+
 		result, crossTxQcp = itx.Exec(runCtx)
 
 		if !result.IsOK() {
@@ -763,15 +772,6 @@ func (app *BaseApp) runTxStd(ctx ctx.Context, tx *txs.TxStd, txStdFromChainID st
 				),
 			})
 		}
-	}
-
-	if app.gasHandler != nil {
-		// 第一个Tx的签名者支付gas费
-		gasUsed, err := app.gasHandler(runCtx, tx.ITxs[0].GetGasPayer())
-		if err != nil {
-			result = err.Result()
-		}
-		result.GasUsed = gasUsed
 	}
 
 	if result.IsOK() {
